@@ -1,0 +1,139 @@
+'CR1000X Series Datalogger
+'Date: Jun 17, 2023
+'Program author: Ron Simenhois
+'
+'Code for WS600 sensor.
+'This code use a one hour DatTable to log:
+'  Minimum Voltage
+'  Data Logger temperature at the end of the hour (C)
+'  Average Air Temperature (F)
+'  Average Air Pressure (Calculated to sea level)
+'	Average RH (%)
+'	Average Wind Speed (mph)
+'	Average Wind vector
+'	Wind Gust (mph)
+'	Total One Hr Precipitation (in)
+'	Precipitation Type at the end of the hour (0 - None, 
+'                                            40 - unspecified precipitation, 
+'                                            60 -  Liquid precipitation, e.g. rain, 
+'                                            70 - Solid precipitation, e.g. snow	
+'Metadata:
+' | Sample type | Parameter    | Unit  | Units for the SW600 are set in the sensor
+'------------------------------------
+'	| Minimum     | Batt_volt    |   V   |
+'	| Sample      | Temp DL      |   C   |
+'	| Average     | Air Temp     |   F   |
+'	| Average     | Air Pressure |  hPa  |
+'	| Average     | RH           |   %   |
+'	| Average     | Hr Wind_Speed|  mph  |
+'	| Average     | Wind vct     |       |
+'	| Maximum     | Wind gust    |  mph  |
+'	| Total       | One Hr Precip|  In   |
+'	| Sample      | Precip Type  | Code  |	
+'
+' Wiring:
+'   Lufft SW600:
+'     White ----------------> G
+'     Broun ----------------> 12V
+'     Blue -----------------> G (heating)
+'     Red ------------------> 12V (heating)
+'     Yellow ---------------> C1 (SDI-12 data output)
+'
+'*****************************************************************************
+
+
+'Declare Constants
+'Example:
+'CONST PI = 3.141592654
+
+'Public Variables
+Public PTemp, Batt_volt
+Public WS600_Temp(9)
+Public WS600_RH(9)
+Public WS600_Air_Pressure(9)
+Public WS600_Wind(9)
+Public WS600_Precip(4)
+Public One_Hr_Precip
+
+Alias WS600_Temp(1) = WS600_Air_Temperature_act
+Alias WS600_Temp(2) = WS600_Air_Temperature_min
+Alias WS600_Temp(3) = WS600_Air_Temperature_max 
+Alias WS600_Temp(4) = WS600_Air_Temperature_avg 
+Alias WS600_Temp(5) = WS600_Dew_Point_act
+Alias WS600_Temp(6) = WS600_Dew_Point_min 
+Alias WS600_Temp(7) = WS600_Dew_Point_max 
+Alias WS600_Temp(8) = WS600_Dew_Point_avg
+Alias WS600_Temp(9) = WS600_Wet_Bulb_Temperature_act 
+
+Alias WS600_RH(1) = WS600_RH_act 
+Alias WS600_RH(2) = WS600_RH_min 
+Alias WS600_RH(3) = WS600_RH_max 
+Alias WS600_RH(4) = WS600_RH_avg 
+
+Alias WS600_Air_Pressure(1) = WS600_Abs_Air_Pressur_act
+Alias WS600_Air_Pressure(2) = WS600_Abs_Air_Pressure_min
+Alias WS600_Air_Pressure(3) = WS600_Abs_Air_Pressure_max
+Alias WS600_Air_Pressure(4) = WS600_Abs_Air_Pressure_avg
+Alias WS600_Air_Pressure(5) = WS600_Air_Density_act
+Alias WS600_Air_Pressure(6) = WS600_Rel_Air_Pressure_act 
+Alias WS600_Air_Pressure(7) = WS600_Rel_Air_Pressure_min 
+Alias WS600_Air_Pressure(8) = WS600_Rel_Air_Pressure_max 
+Alias WS600_Air_Pressure(9) = WS600_Rel_Air_Pressure_avg
+
+Alias WS600_Wind(1) = WS600_Wind_Speed_act
+Alias WS600_Wind(2) = WS600_Wind_Speed_min
+Alias WS600_Wind(3) = WS600_Wind_Speed_max
+Alias WS600_Wind(4) = WS600_Wind_Speed_avg
+Alias WS600_Wind(5) = WS600_Wind_Speed_vct
+Alias WS600_Wind(6) = WS600_Wind_Direction_act
+Alias WS600_Wind(7) = WS600_Wind_Direction_min
+Alias WS600_Wind(8) = WS600_Wind_Direction_max
+Alias WS600_Wind(9) = WS600_Wind_Direction_vct 
+
+Alias  WS600_Precip(1) = WS600_Precip_Amount_absolute
+Alias  WS600_Precip(2) = WS600_Precip_Amount_difference
+Alias  WS600_Precip(3) = WS600_Precipitation_Intensity
+Alias  WS600_Precip(4) = WS600_Precipitation_Type_Id 
+
+'Data Tables:
+DataTable (WS_DATA,true, -1)
+  DataInterval(0,60,Min,10)
+	Minimum (1,Batt_volt,FP2,False,False)
+	Sample (1,PTemp,FP2)
+	Average (1,WS600_Air_Temperature_avg,FP2,False)
+	Average (1,WS600_Rel_Air_Pressure_avg,FP2,False)
+	Average (1,WS600_RH_avg,FP2,False)
+	Average (1,WS600_Wind_Speed_avg,FP2,False)
+	Average (1,WS600_Wind_Speed_vct,FP2,False)
+	Maximum (1,WS600_Wind_Speed_max,FP2,False,False)
+	Sample (1, One_Hr_Precip, IEEE8)
+	Sample (1,WS600_Precipitation_Type_Id, FP2)	
+EndTable
+
+'Main Program
+BeginProg
+  One_Hr_Precip = 0
+	Scan (5,Sec,0,0)
+		PanelTemp (PTemp,15000)
+		Battery (Batt_volt)
+		'WS600:
+		'Temperature data: Air Temperature (act), Air Temperature (min), Air Temperature (max), Air Temperature (avg), Dew Point (act), Dew Point (min), Dew Point (max), Dew Point (avg), Wet Bulb Temperature (act) 
+		SDI12Recorder (WS600_Temp(),C1,0,"M1!",1.0,0)
+		'RH daata
+		SDI12Recorder (WS600_RH(),C1,0,"M2!",1.0,0)
+		'Air pressure 
+		SDI12Recorder (WS600_Air_Pressure(),C1,0,"M3!",1.0,0)
+		'Wind data: Wind Speed (act), Wind Speed (min), Wind Speed (max), Wind Speed (avg) ,Wind Speed (vct), Wind Direction (act),Wind Direction (min), Wind Direction (max), Wind Direction (vct)
+		SDI12Recorder (WS600_Wind(),C1,0,"M4!",1.0,0)
+		'Precipitations
+		SDI12Recorder (WS600_Precip(),C1,0,"M6!",1.0,0)
+		If TimeIntoInterval (10,600,Sec) Then 
+		    One_Hr_Precip = 0
+		Else
+		    One_Hr_Precip = One_Hr_Precip + WS600_Precip_Amount_difference
+		EndIf 
+		'Call Output Tables
+		CallTable WS_DATA
+	NextScan
+EndProg
+
