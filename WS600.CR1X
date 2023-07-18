@@ -3,7 +3,7 @@
 'Program author: Ron Simenhois
 '
 'Code for WS600 sensor.
-'This code use a one hour DatTable to log:
+'This code uses a one-hour DatTable to log:
 '  Minimum Voltage
 '  Data Logger temperature at the end of the hour (C)
 '  Average Air Temperature (F)
@@ -15,10 +15,10 @@
 '	Total One Hr Precipitation (in)
 '	Precipitation Type at the end of the hour (0 - None, 
 '                                            40 - unspecified precipitation, 
-'                                            60 -  Liquid precipitation, e.g. rain, 
-'                                            70 - Solid precipitation, e.g. snow	
+'                                            60 -  Liquid precipitation, e.g., rain, 
+'                                            70 - Solid precipitation, e.g., snow	
 'Metadata:
-' | Sample type | Parameter    | Unit  | Units for the SW600 are set in the sensor
+' | Sample type | Parameter    | Unit  | Units for the WS600 are set in the sensor
 '------------------------------------
 '	| Minimum     | Batt_volt    |   V   |
 '	| Sample      | Temp DL      |   C   |
@@ -32,7 +32,7 @@
 '	| Sample      | Precip Type  | Code  |	
 '
 ' Wiring:
-'   Lufft SW600:
+'   Lufft WS600:
 '     White ----------------> G
 '     Broun ----------------> 12V
 '     Blue -----------------> G (heating)
