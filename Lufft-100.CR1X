@@ -1,0 +1,86 @@
+' CR1000
+' Created by CAIC
+'
+' Program: Lufft-100 
+'
+' Control Port Usage: 
+'    C3> Lufft SW100 Precipitation Sensor
+'
+' Wiring Diagram:
+'
+' Lufft SW100 Precipitation Sensor:
+'   White ----------------> G
+'   Broun ----------------> 12V
+'   Blue -----------------> G (heating)
+'   Red ------------------> 12V (heating)
+'   Yellow ---------------> C3 (SDI-12 data output)
+'
+' MetaData (Table_60_Min):
+' | Batt volt | 1 Hr Precip | Precip Type |  HNW24 |
+' --------------------------------------------------
+' |   Volt    |    Inch     |    Code     |  Inch  |
+'
+
+
+'Constants
+' SW-100 precipitaion sensor:
+Const TOTAL         = 1
+Const INTERVAL      = 2
+Const INTENSITY_H   = 3
+Const TYPE_GENERAL  = 4
+Const INTENSITY_M   = 5
+Const TYPE_SPECIFIC = 8
+
+'Declare Variables and Units
+Public BattV
+Public PTemp_C
+Public PRECIP(9)
+Public HNW24
+
+Alias PRECIP(INTERVAL)      = Pricp_Hrly             'Since last reading (In)
+Alias PRECIP(TYPE_GENERAL)  = Precip_Type            'Code
+Alias PRECIP(TYPE_SPECIFIC) = Precip_Type_Specific   'Code
+
+
+Units BattV=Volts
+Units PTemp_C=Deg C
+
+'Define Data Tables
+DataTable(Table_60_Min,True,-1)
+	DataInterval(0,1440,Min,10)
+	Minimum(1,BattV,FP2,False,False)
+	Sample(1,Pricp_Hrly,IEEE4)
+	Sample(1,Precip_Type,FP2)
+	Sample(1,HNW24,IEEE4)
+EndTable
+
+'Subroutine that update 24 hours SWE
+'This Subroutine loop and sum the last 24 hrs of the Table_60_Min
+'and sum the hourly precipitations 
+Sub UpdateHNW24
+  If IfTime(0,60,Min) Then
+    HNW24 = 0
+    Dim i
+    For i=1 To 24
+      HNW24 = HNW24 + Table_60_Min.Pricp_Hrly(1, i)
+    Next
+  EndIf
+EndSub  
+
+'Main Program
+BeginProg
+	'Main Scan
+	Scan(5,Sec,1,0)
+		'Default CR1000 Datalogger Battery Voltage measurement 'BattV'
+		Battery(BattV)
+		'Default CR1000 Datalogger Wiring Panel Temperature measurement 'PTemp_C'
+		PanelTemp(PTemp_C,_60Hz)
+    ' SW-100 measurments once every hour:
+    If IfTime(0, 60, min) Then 
+		  SDI12Recorder (PRECIP,C3,0,"M!",1.0,0)
+		EndIf
+		UpdateHNW24
+		'Call Data Tables and Store Data
+		CallTable Table_60_Min
+	NextScan
+EndProg
